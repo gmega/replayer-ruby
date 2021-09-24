@@ -18,6 +18,7 @@ describe Replayer do
         result_set.take(5)
       end
 
+      expect(recorded.length).to be(5)
       # The fact the cassette exists means we're going to read it.
       expect(Replayer.cassette_exists?('firestore_query')).to be(true)
 

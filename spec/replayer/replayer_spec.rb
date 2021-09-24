@@ -15,16 +15,8 @@ end
 
 describe Replayer do
 
-  before(:all) do
-    Replayer.cassette_folder = '/tmp'
-  end
-
   after(:each) do
     Replayer.detach
-  end
-
-  after(:all) do
-
   end
 
   it "record/replays basic cases" do

@@ -5,12 +5,13 @@ module Replayer
 
     # @return [Cassette]
     def self.from_file(path)
-      Cassette.new(File.exist?(path) ? Marshal.load(File.read(path, mode: 'rb')) : nil)
+      Cassette.new(path)
     end
 
-    def initialize(calls = nil)
-      @is_recording = calls.nil?
-      @calls = calls || Hash.new
+    def initialize(path)
+      @path = path
+      @is_recording = !File.exists?(path)
+      @calls = @is_recording ? Hash.new : load_cassette(path)
     end
 
     def is_recording?
@@ -32,13 +33,17 @@ module Replayer
       match_call(method, args).result
     end
 
-    def save(path)
+    def save
       raise "Cannot save cassette when in replay mode" unless is_recording?
 
-      File.open(path,  mode: 'wb') { |f| f.write(Marshal.dump(@calls)) }
+      File.open(@path,  mode: 'wb') { |f| f.write(Marshal.dump(@calls)) }
     end
 
     private
+
+    def load_cassette(path)
+      Marshal.load(File.read(path, mode: 'rb'))
+    end
 
     # @return [MethodCall]
     def match_call(method, args)

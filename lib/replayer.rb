@@ -28,21 +28,32 @@ module Replayer
     # Block form automatically calls eject at the end.
     if block_given?
       begin
-        result = block.call
-        @cassette.save(path) if @cassette.is_recording?
-        result
+        block.call
       ensure
         eject
       end
     end
   end
 
-  def eject
+  def eject(save: nil)
+    if save.nil?
+      # If the user doesn't say anything, we'll save only if recording.
+      @cassette.save if @cassette.is_recording?
+    elsif save
+      # If the user explicitly says we should save, we try to save.
+      @cassette.save
+    end
+    # If the user explicitly says we should NOT save, we don't save.
+
     @cassette = nil
   end
 
   def current_cassette
     @cassette
+  end
+
+  def cassette_inserted?
+    !current_cassette.nil?
   end
 
   def attach(klass)
