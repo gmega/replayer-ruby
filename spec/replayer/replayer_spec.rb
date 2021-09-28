@@ -16,13 +16,11 @@ end
 describe Replayer do
 
   after(:each) do
-    Replayer.detach
+    Replayer.uninstall
   end
 
   it "record/replays basic cases" do
-    Replayer.
-      attach(Generator).
-      for_methods(:generate)
+    Replayer.install(Generator, :generate)
 
     recorded = Replayer.insert_cassette('basic_cases') { Generator.new.generate }
     replayed = Replayer.insert_cassette('basic_cases') { Generator.new.generate }
@@ -31,9 +29,7 @@ describe Replayer do
   end
 
   it 'record/replays with simple args' do
-    Replayer.
-      attach(GeneratorWithArgs).
-      for_methods(:generate_multi)
+    Replayer.install(GeneratorWithArgs, :generate_multi)
 
     recorded = Replayer.insert_cassette('simple_args') { GeneratorWithArgs.new.generate_multi(10, offset: 2) }
     replayed = Replayer.insert_cassette('simple_args') { GeneratorWithArgs.new.generate_multi(10, offset: 2) }
@@ -43,9 +39,7 @@ describe Replayer do
   end
 
   it 'correctly record/replays multiple calls to same method' do
-    Replayer.
-      attach(Generator).
-      for_methods(:generate)
+    Replayer.install(Generator, :generate)
 
     recorded = Replayer.insert_cassette('multiple_calls') { GeneratorWithArgs.new.generate_multi(10, offset: 2) }
     replayed = Replayer.insert_cassette('multiple_calls') { GeneratorWithArgs.new.generate_multi(10, offset: 2) }

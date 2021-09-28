@@ -1,13 +1,13 @@
-require 'replayer/method_patcher'
+require 'replayer/instrumentation'
 require 'replayer/cassette'
-require 'replayer/firestore'
+require 'replayer/apps'
 require 'replayer/version'
 
 module Replayer
   extend self
 
   @cassette = nil
-  @patches = {}
+  @patched = {}
 
   def configure
     yield self
@@ -56,31 +56,53 @@ module Replayer
     !current_cassette.nil?
   end
 
-  def attach(klass)
-    patcher = @patches[klass]
-    if patcher.nil?
-      patcher = MethodPatcher.new(klass, self)
-      @patches[klass] = patcher
-    end
-    patcher
+  def install(klass, *methods)
+    decorator(klass).
+      for_methods(*methods).
+      each { |decorator| decorator.decorate(&replay_decorator(decorator.method_name)) }
   end
 
-  def detach(klass = nil)
+  def uninstall(klass = nil)
     if klass.nil?
-      @patches.values.each(&:revert)
+      @patched.values.each(&:clear)
       return
     end
 
-    @patches[klass]&.revert
+    @patched[klass]&.clear
   end
 
-  def use_firestore_shim
-    require 'replayer/firestore'
+  # Returns the {Replayer::MultimethodDecorator} used by {Replayer} to instrument class methods.
+  # Clients can use such decorators to insert their own instrumentation in methods and transforming
+  # data before calling {#install}.
+  #
+  # This method is not a part of the public API.
+  def decorator(klass)
+    patcher = @patched[klass]
+    if patcher.nil?
+      patcher = Instrumentation::MultiMethodDecorator.new(klass)
+      @patched[klass] = patcher
+    end
+    patcher
   end
 
   private
 
   def cassette_file(name)
     File.join(@cassette_folder, name)
+  end
+
+  def replay_decorator(method)
+    self_replayer = self
+
+    Proc.new do |next_method, *args, &block|
+      cassette = self_replayer.current_cassette
+      raise 'No cassette has been inserted!' if cassette.nil?
+
+      if cassette.is_recording?
+        cassette.record(method, args, next_method.call(*args, &block))
+      else
+        cassette.replay(method, args)
+      end
+    end
   end
 end
